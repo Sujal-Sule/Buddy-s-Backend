@@ -1,9 +1,14 @@
 from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
-AllowedMode = Literal["ACTION", "CONVERSATION", "EXPLAIN"]
+AllowedMode = Literal["ACTION", "CONVERSATION", "EXPLAIN", "SCREEN_READ", "FORM_FILL"]
 
 AllowedActionType = Literal[
+    "FORM_FILL",
+    "MEDIA_SHARE",
+    "SCREEN_READ",
+    "NAVIGATE",
+    "CANVAS_EXPLAIN",
     "LAUNCH_APP",
     "CLICK_NODE",
     "TYPE_TEXT",
@@ -38,14 +43,14 @@ class CanvasPrimitive(BaseModel):
     id: str = ""
     label: str = ""
     sublabel: str = ""
-    x: float = 0.5
-    y: float = 0.5
-    width: float = 0.42
-    height: float = 0.11
-    from_x: float = 0.5
-    from_y: float = 0.2
-    to_x: float = 0.5
-    to_y: float = 0.5
+    x: float = 500.0
+    y: float = 500.0
+    width: float = 420.0
+    height: float = 115.0
+    from_x: float = 500.0
+    from_y: float = 200.0
+    to_x: float = 500.0
+    to_y: float = 500.0
     color: str = "#6366F1"
     step_index: int = 1
     narration: str = ""
@@ -79,3 +84,5 @@ class PlanResponse(BaseModel):
     scene_title: str = ""
     scene_summary: str = ""
     canvas_scene: Optional[list[CanvasPrimitive]] = None
+    summary_bullets: Optional[list[str]] = None
+    translated_text: str = ""
