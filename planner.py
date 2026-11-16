@@ -18,7 +18,7 @@ except Exception:
     types = None  # type: ignore
 
 logger = logging.getLogger("TheBuddyPlanner")
-DEFAULT_MODEL = "gemini-3.5-flash-lite"
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 SYSTEM_PROMPT = (
     "You are The Buddy, an Autonomous Android OS Agent & Visual Co-Pilot.\n"
@@ -26,15 +26,15 @@ SYSTEM_PROMPT = (
     '{"status":"ok","mode":"ACTION"|"CONVERSATION"|"EXPLAIN"|"SCREEN_READ"|"FORM_FILL","speech_reply":"...",'
     '"emotional_context":"warm"|"calm_analytical"|"cautious"|"enthusiastic",'
     '"next_action":{"action_type":"FORM_FILL"|"MEDIA_SHARE"|"SCREEN_READ"|"NAVIGATE"|"CANVAS_EXPLAIN"|'
-    '"LAUNCH_APP"|"CLICK_NODE"|"TYPE_TEXT"|"SCROLL"|"BACK"|"GLOBAL_HOME"|"SPOTLIGHT_GUIDE"|"SCREENSHOT"|"DONE",'
+    '"LAUNCH_APP"|"CLICK_NODE"|"TYPE_TEXT"|"SCROLL"|"BACK"|"GLOBAL_HOME"|"SPOTLIGHT_GUIDE"|"SCREENSHOT"|"SYSTEM_INTENT"|"DONE",'
     '"target":"...","payload":null,"draft_content":null,"instruction":null,"requires_confirmation":false},'
     '"scene_title":"","scene_summary":"","canvas_scene":null,"summary_bullets":null,"translated_text":""}\n'
     "Rules:\n"
-    "1. Form auto-fill requests -> action_type='FORM_FILL'. Media search/share/cleanup -> action_type='MEDIA_SHARE'.\n"
-    "2. Summarize or translate screen -> mode='SCREEN_READ', action_type='SCREEN_READ', populate summary_bullets (3-5 bullets) and/or translated_text.\n"
-    "3. Scroll/reel/compare navigation -> action_type='NAVIGATE' or LAUNCH_APP/CLICK_NODE.\n"
-    "4. Explanations -> mode='EXPLAIN', action_type='CANVAS_EXPLAIN', populate canvas_scene using a 0..1000 coordinate grid (x,y,from_x,from_y,to_x,to_y in 0..1000).\n"
-    "5. Set requires_confirmation=true for sending external messages, posting, payments, or file deletion."
+    "1. Creative, conversational, advice, coding, or knowledge requests -> mode='CONVERSATION', action_type='DONE', give a direct helpful speech_reply (never 'All caught up').\n"
+    "2. Multi-step app tasks (e.g. 'open WhatsApp and open R.S.S group', 'play X on Spotify'): Step 1 LAUNCH_APP from InstalledApps; next cycles examine UITree, CLICK_NODE matching row (skip nav tabs/search hints), or CLICK_NODE Search -> TYPE_TEXT -> CLICK_NODE result -> SCROLL DOWN if absent. Only return DONE after completing the subgoal.\n"
+    "3. Form auto-fill -> FORM_FILL. Media search/share/cleanup -> MEDIA_SHARE. Summarize/translate -> mode='SCREEN_READ', action_type='SCREEN_READ'.\n"
+    "4. Explanations -> mode='EXPLAIN', action_type='CANVAS_EXPLAIN', populate canvas_scene on 0..1000 grid.\n"
+    "5. Set requires_confirmation=true before sending external messages, posting, payments, or file deletion."
 )
 
 
@@ -48,16 +48,17 @@ class TaskPlanner:
     def plan_next(self, req: PlanRequest) -> PlanResponse:
         try:
             if self.client and types is not None:
-                apps_ctx = [f"{a.app_name}:{a.package_name}" for a in req.installed_apps[:80]]
+                apps_ctx = [f"{a.app_name}:{a.package_name}" for a in req.installed_apps[:90]]
                 ui_ctx = [
                     f"{n.node_id}|{n.class_name}|txt={n.text}|desc={n.content_description}|clk={n.is_clickable}|edt={n.is_editable}|{n.bounds_in_screen}"
-                    for n in req.current_ui_tree[:35]
+                    for n in req.current_ui_tree[:60]
                 ]
                 contents = (
                     f"Prompt: {req.user_prompt}\nModeHint: {req.mode}\nActivePkg: {req.active_package}\n"
-                    f"History: {req.history[-6:]}\nInstalledApps: {apps_ctx}\nUITree: {ui_ctx}"
+                    f"History: {req.history[-8:]}\nInstalledApps: {apps_ctx}\nUITree: {ui_ctx}"
                 )
-                for model_id in (self.model_name, "gemini-2.5-flash-lite"):
+                models = tuple(dict.fromkeys((self.model_name, "gemini-2.5-flash", "gemini-2.5-flash-lite")))
+                for model_id in models:
                     try:
                         cfg_args: dict = {
                             "system_instruction": SYSTEM_PROMPT,
@@ -92,3 +93,4 @@ class TaskPlanner:
 
 
 planner = TaskPlanner()
+
