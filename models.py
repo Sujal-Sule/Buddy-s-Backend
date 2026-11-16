@@ -17,6 +17,7 @@ AllowedActionType = Literal[
     "GLOBAL_HOME",
     "SPOTLIGHT_GUIDE",
     "SCREENSHOT",
+    "SYSTEM_INTENT",
     "DONE",
 ]
 
@@ -73,6 +74,7 @@ class PlanRequest(BaseModel):
     active_package: str = ""
     talk_mode: str = "COMMAND"
     history: list[str] = Field(default_factory=list)
+    screen_image_base64: Optional[str] = Field(default=None, max_length=350_000)
 
 
 class PlanResponse(BaseModel):
@@ -86,3 +88,4 @@ class PlanResponse(BaseModel):
     canvas_scene: Optional[list[CanvasPrimitive]] = None
     summary_bullets: Optional[list[str]] = None
     translated_text: str = ""
+

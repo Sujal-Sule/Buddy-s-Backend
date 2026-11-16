@@ -1,5 +1,6 @@
 import re
-from models import CanvasPrimitive, InstalledApp, NextAction, PlanRequest, PlanResponse, UiNode
+from intent_helpers import build_explain_primitives, try_creative_or_system_fallback
+from models import InstalledApp, NextAction, PlanRequest, PlanResponse, UiNode
 
 EXPLAIN_PREFIXES = ("explain", "how does", "how do", "what is", "why does", "diagram", "visualize", "teach me")
 ACTION_VERBS = ("open ", "launch ", "start ", "play ", "scroll", "swipe", "click ", "tap ", "type ", "search ", "find ", "send ", "message ", "post ", "update ", "write ", "screenshot", "back", "home", "fill ", "summarize", "translate", "compare")
@@ -21,32 +22,12 @@ def detect_mode(prompt: str, requested_mode: str) -> str:
     return "ACTION"
 
 
-def build_explain_primitives(prompt: str) -> tuple[str, str, list[CanvasPrimitive]]:
-    topic = re.sub(r"^(?:hey\s+buddy\s*,?\s*)?(?:can\s+you\s+|please\s+)?(?:explain\s+how\s+|explain\s+|what\s+is\s+|how\s+does\s+|how\s+do\s+|visualize\s+)", "", prompt.strip(), flags=re.IGNORECASE)
-    topic = re.sub(r"\s+(?:works?|on\s+canvas)\??$", "", topic, flags=re.IGNORECASE).strip(" ?.") or "System Architecture"
-    title = topic.title()[:32]
-    primitives = [
-        CanvasPrimitive(type="box", id="b1", label="1. Input Signal", sublabel=f"Trigger for {title}", x=500, y=140, width=520, height=120, color="#6366F1", step_index=1, narration=f"First, raw inputs enter the {title} pipeline and get normalized."),
-        CanvasPrimitive(type="arrow", id="a1", label="Encode", from_x=500, from_y=205, to_x=270, to_y=395, color="#06B6D4", step_index=2),
-        CanvasPrimitive(type="box", id="b2", label="2. Core Engine", sublabel="State & Feature Map", x=270, y=460, width=420, height=125, color="#06B6D4", step_index=2, narration="Next, the core engine maps patterns and balances internal state."),
-        CanvasPrimitive(type="arrow", id="a2", label="Transform", from_x=480, from_y=460, to_x=520, to_y=460, color="#EC4899", step_index=3),
-        CanvasPrimitive(type="box", id="b3", label="3. Synthesis", sublabel="Iterative Refinement", x=730, y=460, width=420, height=125, color="#EC4899", step_index=3, narration="Then synthesis refines key signals while filtering out noise."),
-        CanvasPrimitive(type="highlight", id="h1", label="Active Loop", x=730, y=460, width=440, height=140, color="#34D399", step_index=3),
-        CanvasPrimitive(type="arrow", id="a3", label="Deliver", from_x=730, from_y=525, to_x=500, to_y=720, color="#34D399", step_index=4),
-        CanvasPrimitive(type="box", id="b4", label="4. Final Output", sublabel=f"Verified {title}", x=500, y=790, width=520, height=120, color="#34D399", step_index=4, narration=f"Finally, everything converges into the verified {title} result."),
-        CanvasPrimitive(type="label", id="l1", label="Closed-Loop Flow", x=500, y=925, color="#94A3B8", step_index=4),
-    ]
-    return title, f"Interactive visual breakdown of {title}", primitives
-
-
 def match_installed_app(prompt_lower: str, apps: list[InstalledApp]) -> InstalledApp | None:
-    best: InstalledApp | None = None
-    best_len = 0
+    best: InstalledApp | None = None; best_len = 0
     for app in apps:
         name_l = app.app_name.lower().strip()
         if len(name_l) >= 2 and re.search(rf"\b{re.escape(name_l)}\b", prompt_lower) and len(name_l) > best_len:
-            best = app
-            best_len = len(name_l)
+            best = app; best_len = len(name_l)
     return best
 
 
@@ -65,8 +46,7 @@ def extract_subgoal_query(prompt: str, app: InstalledApp | None) -> tuple[str, s
 
 
 def find_matching_ui_node(query: str, ui_tree: list[UiNode]) -> UiNode | None:
-    q = query.lower().strip()
-    q_norm = re.sub(r"[^a-z0-9]", "", q)
+    q = query.lower().strip(); q_norm = re.sub(r"[^a-z0-9]", "", q)
     if not q:
         return None
     tokens = [t for t in q.split() if len(t) >= 2 and t not in FILLER_WORDS]
@@ -80,7 +60,8 @@ def find_matching_ui_node(query: str, ui_tree: list[UiNode]) -> UiNode | None:
         if txt.lower() in NAV_TABS and txt.lower() not in q:
             continue
         h_norm = re.sub(r"[^a-z0-9]", "", hay)
-        if txt.lower() == q or desc.lower() == q or q in hay or (len(q_norm) >= 2 and q_norm in h_norm) or (tokens and all(t in hay for t in tokens)):
+        single_hit = node.is_clickable and len(tokens) <= 3 and ((len(txt) >= 3 and txt.lower() in tokens) or (len(desc) >= 3 and desc.lower() in tokens))
+        if txt.lower() == q or desc.lower() == q or q in hay or (len(q_norm) >= 2 and q_norm in h_norm) or (tokens and all(t in hay for t in tokens)) or single_hit:
             return node
     return None
 
@@ -103,6 +84,9 @@ def build_fallback_plan(req: PlanRequest) -> PlanResponse:
         return PlanResponse(status="ok", mode="FORM_FILL", speech_reply="Auto-filling your profile details.", next_action=NextAction(action_type="FORM_FILL"))
     if any(k in low for k in ("screenshot", "latest photo", "ticket")) and any(k in low for k in ("find", "send", "share", "clean")):
         return PlanResponse(status="ok", mode="ACTION", speech_reply="Searching your media library.", next_action=NextAction(action_type="MEDIA_SHARE", payload=prompt, requires_confirmation=("clean" in low or "delete" in low)))
+    extra = try_creative_or_system_fallback(prompt, low)
+    if extra is not None:
+        return extra
     if mode == "CONVERSATION":
         return PlanResponse(status="ok", mode="CONVERSATION", speech_reply="Searching the web for that." if low.endswith("?") else "I'm ready whenever you want me to open an app or explain a topic.", next_action=NextAction(action_type="SYSTEM_INTENT" if low.endswith("?") else "DONE", target="WEB_SEARCH" if low.endswith("?") else "", payload=prompt if low.endswith("?") else None))
 
