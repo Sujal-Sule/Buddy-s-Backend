@@ -4,25 +4,56 @@ from models import CanvasPrimitive, NextAction, PlanResponse
 
 def build_explain_primitives(prompt: str) -> tuple[str, str, list[CanvasPrimitive]]:
     topic = re.sub(
-        r"^(?:hey\s+buddy\s*,?\s*)?(?:can\s+you\s+|please\s+)?(?:explain\s+how\s+|explain\s+|what\s+is\s+|how\s+does\s+|how\s+do\s+|visualize\s+)",
+        r"^(?:hey\s+buddy\s*,?\s*)?(?:can\s+you\s+|please\s+)?(?:explain\s+how\s+|explain\s+|what\s+is\s+|how\s+does\s+|how\s+do\s+|visualize\s+|teach\s+me\s+)",
         "",
         prompt.strip(),
         flags=re.IGNORECASE,
     )
-    topic = re.sub(r"\s+(?:works?|on\s+canvas)\??$", "", topic, flags=re.IGNORECASE).strip(" ?.") or "System Architecture"
+    topic = re.sub(r"\s+(?:works?|on\s+canvas|with\s+diagram)\??$", "", topic, flags=re.IGNORECASE).strip(" ?.") or "System Dynamics"
     title = topic.title()[:32]
     primitives = [
-        CanvasPrimitive(type="box", id="b1", label="1. Input Signal", sublabel=f"Trigger for {title}", x=500, y=140, width=520, height=120, color="#6366F1", step_index=1, narration=f"First, raw inputs enter the {title} pipeline and get normalized."),
-        CanvasPrimitive(type="arrow", id="a1", label="Encode", from_x=500, from_y=205, to_x=270, to_y=395, color="#06B6D4", step_index=2),
-        CanvasPrimitive(type="box", id="b2", label="2. Core Engine", sublabel="State & Feature Map", x=270, y=460, width=420, height=125, color="#06B6D4", step_index=2, narration="Next, the core engine maps patterns and balances internal state."),
-        CanvasPrimitive(type="arrow", id="a2", label="Transform", from_x=480, from_y=460, to_x=520, to_y=460, color="#EC4899", step_index=3),
-        CanvasPrimitive(type="box", id="b3", label="3. Synthesis", sublabel="Iterative Refinement", x=730, y=460, width=420, height=125, color="#EC4899", step_index=3, narration="Then synthesis refines key signals while filtering out noise."),
-        CanvasPrimitive(type="highlight", id="h1", label="Active Loop", x=730, y=460, width=440, height=140, color="#34D399", step_index=3),
-        CanvasPrimitive(type="arrow", id="a3", label="Deliver", from_x=730, from_y=525, to_x=500, to_y=720, color="#34D399", step_index=4),
-        CanvasPrimitive(type="box", id="b4", label="4. Final Output", sublabel=f"Verified {title}", x=500, y=790, width=520, height=120, color="#34D399", step_index=4, narration=f"Finally, everything converges into the verified {title} result."),
-        CanvasPrimitive(type="label", id="l1", label="Closed-Loop Flow", x=500, y=925, color="#94A3B8", step_index=4),
+        CanvasPrimitive(
+            type="svg_path", id="domain_boundary", label=f"{title} Boundary",
+            d="M 140 310 C 260 215, 740 215, 860 310 L 860 650 C 740 745, 260 745, 140 650 Z",
+            strokeColor="#334155", fillColor="#146366F1", strokeWidth=3.0, step_index=1,
+            narration=f"First, signals and raw inputs enter the {title} envelope.",
+        ),
+        CanvasPrimitive(
+            type="state_morph", id="intake_oscillator", label="Input State",
+            x=245, y=480, width=96, height=130, axis="Y", amplitude=24.0, frequency=1.35, color="#FB7185", step_index=1,
+        ),
+        CanvasPrimitive(
+            type="procedural_polygon", id="core_node", label="Primary Transform",
+            cx=485, cy=480, sides=12, innerRadius=56, outerRadius=78, angularVelocity=96.0, direction="CW",
+            color="#38BDF8", step_index=2,
+            narration=f"Next, the central stage couples and transforms energy inside {title}.",
+        ),
+        CanvasPrimitive(
+            type="radial_array", id="harmonic_ring", label="Coupled Stage",
+            cx=655, cy=480, sides=8, innerRadius=36, outerRadius=66, angularVelocity=115.0, direction="CCW",
+            color="#818CF8", step_index=2,
+        ),
+        CanvasPrimitive(
+            type="state_morph", id="pulse_gate", label="Modulation Pulse",
+            x=790, y=480, width=90, height=90, axis="SCALE", amplitude=18.0, frequency=1.6, color="#34D399", step_index=3,
+            narration="Then downstream regulation shapes amplitude and timing cleanly.",
+        ),
+        CanvasPrimitive(
+            type="flow_spline", id="primary_stream",
+            startX=245, startY=480, cp1X=360, cp1Y=335, cp2X=560, cp2Y=335, endX=790, endY=480,
+            particleColor="#38BDF8", animatedFlow=True, particleCount=3, flowSpeed=0.45, step_index=3,
+        ),
+        CanvasPrimitive(
+            type="flow_spline", id="feedback_stream",
+            startX=790, startY=505, cp1X=620, cp1Y=650, cp2X=390, cp2Y=650, endX=245, endY=505,
+            particleColor="#34D399", animatedFlow=True, particleCount=3, flowSpeed=0.38, step_index=4,
+            narration=f"Finally, feedback stabilizes the {title} output cycle.",
+        ),
+        CanvasPrimitive(type="callout_tag", id="tag_in", title="1. Intake", subtitle="Initial State", x=220, y=215, targetX=245, targetY=420, color="#FB7185", step_index=1),
+        CanvasPrimitive(type="callout_tag", id="tag_core", title="2. Core Coupling", subtitle=title[:22], x=545, y=215, targetX=485, targetY=415, color="#38BDF8", step_index=2),
+        CanvasPrimitive(type="callout_tag", id="tag_out", title="3. Output & Feedback", subtitle="Closed-Loop Flow", x=765, y=735, targetX=790, targetY=525, color="#34D399", step_index=4),
     ]
-    return title, f"Interactive visual breakdown of {title}", primitives
+    return title, f"Universal Vector Schematic • {title}", primitives
 
 
 def try_creative_or_system_fallback(prompt: str, low: str) -> PlanResponse | None:

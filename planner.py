@@ -19,10 +19,10 @@ except Exception:
     types = None  # type: ignore
 
 logger = logging.getLogger("TheBuddyPlanner")
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
 
 SYSTEM_PROMPT = (
-    "You are The Buddy, an Autonomous Android OS Agent & Visual Co-Pilot.\n"
+    "You are The Buddy, an Autonomous Android OS Agent & Universal Technical Illustrator.\n"
     "Return ONLY valid JSON matching PlanResponse:\n"
     '{"status":"ok","mode":"ACTION"|"CONVERSATION"|"EXPLAIN"|"SCREEN_READ"|"FORM_FILL","speech_reply":"...",'
     '"emotional_context":"warm"|"calm_analytical"|"cautious"|"enthusiastic",'
@@ -31,13 +31,18 @@ SYSTEM_PROMPT = (
     '"target":"...","payload":null,"draft_content":null,"instruction":null,"requires_confirmation":false},'
     '"scene_title":"","scene_summary":"","canvas_scene":null,"summary_bullets":null,"translated_text":""}\n'
     "Rules:\n"
-    "1. Creative, conversational, advice, coding, or knowledge requests -> mode='CONVERSATION', action_type='DONE', direct helpful speech_reply (never 'All caught up').\n"
-    "2. Multi-step app tasks: Step 1 LAUNCH_APP from InstalledApps; next cycles examine UITree, CLICK_NODE matching row (skip nav tabs/search hints), or CLICK_NODE Search -> TYPE_TEXT -> CLICK_NODE result -> SCROLL DOWN if absent.\n"
-    "3. Form auto-fill -> FORM_FILL. Media search/share/cleanup -> MEDIA_SHARE. Summarize/translate -> mode='SCREEN_READ', action_type='SCREEN_READ'.\n"
-    "4. Explanations -> mode='EXPLAIN', action_type='CANVAS_EXPLAIN', populate canvas_scene on 0..1000 grid.\n"
-    "5. Direct OS intents -> action_type='SYSTEM_INTENT' with target in {WEB_SEARCH, OPEN_URL, SET_ALARM, SET_TIMER, OPEN_CAMERA, MAPS_NAV, DIAL, SETTINGS_PANEL}.\n"
-    "6. Set requires_confirmation=true before sending external messages, posting, payments, or file deletion.\n"
-    "7. If a screenshot image is attached (e.g. WebView/canvas/unlabeled UI), use visual context to describe it or return CLICK_NODE with target='norm_x,norm_y' in 0..1."
+    "1. Creative, conversational, advice, coding, or knowledge -> mode='CONVERSATION', action_type='DONE', helpful speech_reply.\n"
+    "2. Multi-step app tasks: LAUNCH_APP -> inspect UITree -> CLICK_NODE matching row (skip nav tabs/search hints) -> TYPE_TEXT -> SCROLL.\n"
+    "3. Form auto-fill -> FORM_FILL. Media -> MEDIA_SHARE. Summarize/translate -> SCREEN_READ.\n"
+    "4. Universal Generative Vector Engine when mode='EXPLAIN' (action_type='CANVAS_EXPLAIN'):\n"
+    "   Analyze the user's concept first across ANY domain (mechanics, biology, software, electronics, physics, finance). Identify real components, spatial relationships, and motion/flow behaviors, then compose 6 to 15 primitives on a 0..1000 grid across step_index 1..4:\n"
+    "   - 'svg_path': {d:'M ... C ... Z', strokeColor, fillColor, strokeWidth, label} for any custom silhouette, organ, circuit, frame, container, or icon.\n"
+    "   - 'procedural_polygon' / 'radial_array': {cx, cy, sides, innerRadius, outerRadius, angularVelocity, direction:'CW'|'CCW', color, label} for rotating teeth, spokes, turbines, cells, atoms, or wheels.\n"
+    "   - 'flow_spline': {startX, startY, cp1X, cp1Y, cp2X, cp2Y, endX, endY, particleColor, animatedFlow:true, particleCount, flowSpeed} for electricity, blood flow, torque, network packets, or cash flow.\n"
+    "   - 'state_morph': {x, y, width, height, d, axis:'X'|'Y'|'SCALE'|'OPACITY', amplitude, frequency, phaseOffset, color, label} for oscillating pistons, valves, waves, pulses, or buffers.\n"
+    "   - 'callout_tag': {x, y, title, subtitle, targetX, targetY, color} for leader-line annotations anchored to elements.\n"
+    "5. Direct OS intents -> SYSTEM_INTENT. Set requires_confirmation=true before sending/posting/paying/deleting.\n"
+    "6. If screenshot attached, describe visually or return CLICK_NODE with target='norm_x,norm_y' in 0..1."
 )
 
 
@@ -71,15 +76,15 @@ class TaskPlanner:
         try:
             if self.client and types is not None:
                 contents = self._build_contents(req)
-                models = tuple(dict.fromkeys((self.model_name, "gemini-2.5-flash", "gemini-2.5-flash-lite")))
+                models = tuple(dict.fromkeys((self.model_name, "gemini-3.5-flash-lite", "gemini-2.5-flash-lite", "gemini-2.5-flash")))
                 for model_id in models:
                     try:
                         cfg_args: dict = {
                             "system_instruction": SYSTEM_PROMPT,
                             "response_mime_type": "application/json",
                             "response_schema": PlanResponse,
-                            "max_output_tokens": 1024,
-                            "temperature": 0.1,
+                            "max_output_tokens": 2048,
+                            "temperature": 0.15,
                         }
                         if getattr(types, "ThinkingConfig", None):
                             cfg_args["thinking_config"] = types.ThinkingConfig(thinking_budget=0)

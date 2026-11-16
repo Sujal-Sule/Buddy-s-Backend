@@ -1,5 +1,5 @@
 from typing import Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 AllowedMode = Literal["ACTION", "CONVERSATION", "EXPLAIN", "SCREEN_READ", "FORM_FILL"]
 
@@ -21,7 +21,14 @@ AllowedActionType = Literal[
     "DONE",
 ]
 
-CanvasPrimitiveType = Literal["box", "arrow", "label", "highlight"]
+CanvasPrimitiveType = Literal[
+    "svg_path",
+    "procedural_polygon",
+    "radial_array",
+    "flow_spline",
+    "state_morph",
+    "callout_tag",
+]
 
 
 class InstalledApp(BaseModel):
@@ -40,21 +47,55 @@ class UiNode(BaseModel):
 
 
 class CanvasPrimitive(BaseModel):
-    type: CanvasPrimitiveType = "box"
+    model_config = ConfigDict(populate_by_name=True)
+
+    type: CanvasPrimitiveType = "svg_path"
     id: str = ""
     label: str = ""
     sublabel: str = ""
-    x: float = 500.0
-    y: float = 500.0
-    width: float = 420.0
-    height: float = 115.0
-    from_x: float = 500.0
-    from_y: float = 200.0
-    to_x: float = 500.0
-    to_y: float = 500.0
     color: str = "#6366F1"
     step_index: int = 1
     narration: str = ""
+    # Universal SVG vector geometry (0..1000 normalized grid)
+    d: str = ""
+    strokeColor: str = "#38BDF8"
+    fillColor: str = "#2238BDF8"
+    strokeWidth: float = 3.5
+    # procedural_polygon / radial_array parameters
+    cx: float = 500.0
+    cy: float = 500.0
+    sides: int = 12
+    innerRadius: float = 48.0
+    outerRadius: float = 72.0
+    angularVelocity: float = 0.0
+    direction: Literal["CW", "CCW"] = "CW"
+    # state_morph physics / kinematics parameters
+    x: float = 500.0
+    y: float = 500.0
+    width: float = 140.0
+    height: float = 110.0
+    axis: Literal["X", "Y", "SCALE", "OPACITY"] = "Y"
+    amplitude: float = 28.0
+    frequency: float = 1.2
+    phaseOffset: float = 0.0
+    # flow_spline Bezier particle emitter parameters
+    startX: float = 200.0
+    startY: float = 500.0
+    cp1X: float = 400.0
+    cp1Y: float = 350.0
+    cp2X: float = 600.0
+    cp2Y: float = 650.0
+    endX: float = 800.0
+    endY: float = 500.0
+    particleColor: str = "#34D399"
+    animatedFlow: bool = True
+    particleCount: int = 3
+    flowSpeed: float = 0.42
+    # callout_tag leader annotation parameters
+    title: str = ""
+    subtitle: str = ""
+    targetX: float = 500.0
+    targetY: float = 500.0
 
 
 class NextAction(BaseModel):
