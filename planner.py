@@ -97,7 +97,7 @@ class TaskPlanner:
         try:
             if self.client and types is not None:
                 contents = self._build_contents(req)
-                models = tuple(dict.fromkeys((self.model_name, "gemini-3.5-flash-lite", "gemini-2.5-flash-lite", "gemini-2.5-flash")))
+                models = tuple(dict.fromkeys((self.model_name, "gemini-3.8-flash", "gemini-3.5-flash-lite")))
                 for model_id in models:
                     try:
                         cfg_args: dict = {"system_instruction": SYSTEM_PROMPT, "response_mime_type": "application/json", "response_schema": PlanResponse, "max_output_tokens": 2048, "temperature": 0.25}
