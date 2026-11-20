@@ -2,7 +2,8 @@ import base64
 import json
 import logging
 import os
-from fallback_planner import build_explain_primitives, build_fallback_plan
+from fallback_planner import build_fallback_plan
+from intent_helpers import extract_explain_title
 from models import NextAction, PlanRequest, PlanResponse, VectorPrimitive
 
 try:
@@ -113,8 +114,8 @@ class TaskPlanner:
     def _post_validate(self, parsed: PlanResponse, req: PlanRequest) -> PlanResponse:
         scene_items = parsed.primitives or parsed.canvas_scene
         if (parsed.mode == "EXPLAIN" or parsed.next_action.action_type == "CANVAS_EXPLAIN") and not scene_items:
-            title, summary, scene = build_explain_primitives(req.user_prompt)
-            return parsed.model_copy(update={"mode": "EXPLAIN", "scene_title": title, "scene_summary": summary, "primitives": scene, "canvas_scene": scene, "next_action": NextAction(action_type="CANVAS_EXPLAIN")})
+            title = parsed.scene_title or extract_explain_title(req.user_prompt)
+            return parsed.model_copy(update={"mode": "EXPLAIN", "scene_title": title, "next_action": NextAction(action_type="CANVAS_EXPLAIN")})
         if scene_items and (parsed.primitives is None or parsed.canvas_scene is None):
             return parsed.model_copy(update={"primitives": scene_items, "canvas_scene": scene_items})
         return parsed

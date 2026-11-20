@@ -1,5 +1,5 @@
 import re
-from intent_helpers import build_explain_primitives, try_creative_or_system_fallback
+from intent_helpers import extract_explain_title, try_creative_or_system_fallback
 from models import InstalledApp, NextAction, PlanRequest, PlanResponse, UiNode
 
 EXPLAIN_PREFIXES = ("explain", "how does", "how do", "what is", "why does", "diagram", "visualize", "teach me")
@@ -78,8 +78,8 @@ def build_fallback_plan(req: PlanRequest) -> PlanResponse:
         bullets = lines[:4] if lines else ["Screen content captured for reading."]
         return PlanResponse(status="ok", mode="SCREEN_READ", speech_reply=" ".join(bullets[:2]), emotional_context="calm_analytical", next_action=NextAction(action_type="SCREEN_READ"), summary_bullets=bullets, translated_text=" ".join(bullets) if "translate" in low else "")
     if mode == "EXPLAIN":
-        title, summary, scene = build_explain_primitives(prompt)
-        return PlanResponse(status="ok", mode="EXPLAIN", speech_reply=f"Let's walk through {title} step by step on your visual canvas.", emotional_context="calm_analytical", next_action=NextAction(action_type="CANVAS_EXPLAIN"), scene_title=title, scene_summary=summary, canvas_scene=scene)
+        title = extract_explain_title(prompt)
+        return PlanResponse(status="ok", mode="EXPLAIN", speech_reply=f"Opening the live whiteboard to explain {title}.", emotional_context="calm_analytical", next_action=NextAction(action_type="CANVAS_EXPLAIN"), scene_title=title)
     if "fill this form" in low or "auto-fill" in low or "autofill" in low:
         return PlanResponse(status="ok", mode="FORM_FILL", speech_reply="Auto-filling your profile details.", next_action=NextAction(action_type="FORM_FILL"))
     if any(k in low for k in ("screenshot", "latest photo", "ticket")) and any(k in low for k in ("find", "send", "share", "clean")):

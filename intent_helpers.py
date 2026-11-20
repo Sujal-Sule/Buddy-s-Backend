@@ -1,19 +1,16 @@
 import re
-from models import CanvasPrimitive, NextAction, PlanResponse
-from scene_composer import compose_topic_scene
+from models import NextAction, PlanResponse
 
 
-def build_explain_primitives(prompt: str) -> tuple[str, str, list[CanvasPrimitive]]:
+def extract_explain_title(prompt: str) -> str:
     topic = re.sub(
-        r"^(?:hey\s+buddy\s*,?\s*)?(?:can\s+you\s+|please\s+)?(?:explain\s+how\s+|explain\s+|what\s+is\s+|how\s+does\s+|how\s+do\s+|visualize\s+|teach\s+me\s+)",
+        r"^(?:hey\s+buddy\s*,?\s*)?(?:can\s+you\s+|please\s+)?(?:explain\s+how\s+|explain\s+|what\s+is\s+|what\s+are\s+|how\s+does\s+|how\s+do\s+|visualize\s+|teach\s+me\s+|draw\s+|sketch\s+)",
         "",
         prompt.strip(),
         flags=re.IGNORECASE,
     )
-    topic = re.sub(r"\s+(?:works?|work|on\s+canvas|with\s+diagram)\??$", "", topic, flags=re.IGNORECASE).strip(" ?.") or "System Dynamics"
-    title = topic.title()[:32]
-    summary, primitives = compose_topic_scene(title, topic)
-    return title, summary, primitives
+    topic = re.sub(r"\s+(?:works?|work|on\s+canvas|with\s+diagram|on\s+whiteboard)\??$", "", topic, flags=re.IGNORECASE).strip(" ?.") or "Live Whiteboard"
+    return topic.title()[:40]
 
 
 def try_creative_or_system_fallback(prompt: str, low: str) -> PlanResponse | None:
