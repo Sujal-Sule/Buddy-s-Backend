@@ -46,7 +46,8 @@ SYSTEM_PROMPT = (
     "   - 'flow_spline': animated Bezier particle emitters for blood, electrons, light rays, packets, or forces.\n"
     "   - 'state_morph': axis 'WAVE' (sinusoidal waves), 'X'|'Y' (oscillation), 'SCALE' (pumping/breathing), 'OPACITY' (activation pulse).\n"
     "   - 'callout_tag': clean leader-line labels anchored to moving parts.\n"
-    "5. Direct OS intents -> SYSTEM_INTENT. Set requires_confirmation=true before sending/posting/paying/deleting."
+    "5. CONTEXT AWARENESS: Use ActivePkg and ActiveActivity (from AccessibilityService) to provide screen-specific explanations and precise UI actions for the user's current screen.\n"
+    "6. Direct OS intents -> SYSTEM_INTENT. Set requires_confirmation=true before sending/posting/paying/deleting."
 )
 
 
@@ -82,7 +83,7 @@ class TaskPlanner:
     def _build_contents(self, req: PlanRequest):
         apps_ctx = [f"{a.app_name}:{a.package_name}" for a in req.installed_apps[:90]]
         ui_ctx = [f"{n.node_id}|{n.class_name}|txt={n.text}|desc={n.content_description}|clk={n.is_clickable}|edt={n.is_editable}|{n.bounds_in_screen}" for n in req.current_ui_tree[:60]]
-        text_part = f"Prompt: {req.user_prompt}\nModeHint: {req.mode}\nActivePkg: {req.active_package}\nHistory: {req.history[-10:]}\nInstalledApps: {apps_ctx}\nUITree: {ui_ctx}"
+        text_part = f"Prompt: {req.user_prompt}\nModeHint: {req.mode}\nActivePkg: {req.active_package}\nActiveActivity: {req.active_activity}\nHistory: {req.history[-10:]}\nInstalledApps: {apps_ctx}\nUITree: {ui_ctx}"
         if req.screen_image_base64 and types is not None:
             try:
                 raw_bytes = base64.b64decode(req.screen_image_base64, validate=False)
